@@ -14,6 +14,10 @@ Frontier-Eng is a benchmark for **generative optimization**: agents iteratively 
 
 The benchmark currently covers **47 tasks** across computing, quantum information, operations research, robotics and control, optics and communications, and physical sciences. The project homepage and paper frame it as a missing evaluation axis between pass/fail coding benchmarks and real engineering work: most engineering problems start from a feasible baseline and reward iterative improvement, not one-shot correctness.
 
+## News
+
+- **2026-06-30** — **New scoring metric: the Medal Score (gold/silver/bronze).** Alongside average rank, we now release a peer-relative *Medal Score* (normalized to `[0,1]`). On each task the top-3 best-feasible scores in the v1 snapshot are frozen as gold/silver/bronze baselines; a model earns 1.00 / 0.67 / 0.33 for reaching each, averaged over the task set, and is reported on both v1 (47 tasks) and v1-lite (10 tasks). It rewards only reaching each task's frontier and ignores negligible long-tail margins, making cross-task aggregation fairer. Per-task podium values and the leaderboard live in [`leaderboard/`](leaderboard/README.md).
+- **2026-06-30** — **`v1-lite` released.** A 10-task representative subset of `v1` covering all five categories with distinct benchmark families, selected for tasks whose scores climb gradually under budget (not one-shot-saturated or all-or-nothing). Run it with `frontier_eval/conf/batch/v1_lite.yaml`.
 
 ## 0. Host Requirements
 
@@ -97,6 +101,14 @@ bash scripts/batch/validate_v1_task_envs.sh
 
 That command runs the batch config for the `v1` problem set with `algorithm.iterations=0`, which evaluates each task's shipped baseline instead of asking an LLM to improve it.
 
+### `v1-lite` quick subset
+
+For fast iteration and ablations, use the 10-task `v1-lite` matrix
+([`frontier_eval/conf/batch/v1_lite.yaml`](frontier_eval/conf/batch/v1_lite.yaml))
+instead of the full `v1` config. It spans all five categories with distinct
+benchmark families and favors tasks whose scores improve gradually under budget,
+so a short run still exercises the full optimization loop.
+
 If you want the full `v1` problem set with normal optimization runs later, see [`run.md`](run.md).
 
 ## Where To Go Next
@@ -108,18 +120,20 @@ If you want the full `v1` problem set with normal optimization runs later, see [
 
 ## Leaderboard
 
-Detailed leaderboard: [lab.einsia.ai/frontier-eng/leaderboard.html](https://lab.einsia.ai/frontier-eng/leaderboard.html)
+Detailed leaderboard (incl. average rank): [lab.einsia.ai/frontier-eng/leaderboard](https://lab.einsia.ai/frontier-eng/leaderboard). Released score tables and the per-task medal podium: [`leaderboard/`](leaderboard/README.md).
 
-| Rank | Model | Average Rank |
-| :--: | :--- | --: |
-| 1 | GPT-5.4 | 3.54 |
-| 2 | Claude Opus 4.6 | 3.63 |
-| 3 | GLM-5 | 4.34 |
-| 4 | DeepSeek V3.2 | 4.76 |
-| 5 | Gemini 3.1 Pro Preview | 5.53 |
-| 6 | Grok 4.20 | 5.82 |
-| 7 | SEED 2.0 Pro | 5.86 |
-| 8 | Qwen3 Coder Next | 6.71 |
+**Medal Score** (gold/silver/bronze podium, higher is better, normalized to `[0,1]` = mean per-task podium credit). On each task the top-3 best scores in the **v1 snapshot (2026-04-14)** are frozen as gold/silver/bronze baselines; a model earns 1.00 / 0.67 / 0.33 for reaching each. Reported on both the full **v1** set (47 tasks) and the **v1-lite** subset (10 tasks); gold/silver/bronze counts are for v1 (see [`leaderboard/`](leaderboard/README.md)):
+
+| Rank | Model | Medal (v1) | Medal (v1-lite) | 🥇 | 🥈 | 🥉 |
+| :--: | :--- | --: | --: | --: | --: | --: |
+| 1 | GPT-5.4 | 0.596 | 0.667 | 24 | 5 | 2 |
+| 2 | Claude Opus 4.6 | 0.490 | 0.501 | 9 | 18 | 6 |
+| 3 | GLM-5 | 0.312 | 0.233 | 4 | 10 | 12 |
+| 4 | DeepSeek V3.2 | 0.248 | 0.166 | 3 | 9 | 8 |
+| 5 | Gemini 3.1 Pro Preview | 0.213 | 0.200 | 3 | 6 | 9 |
+| 6 | Seed 2.0 Pro | 0.185 | 0.100 | 3 | 7 | 3 |
+| 7 | Grok 4.20 | 0.184 | 0.133 | 3 | 6 | 5 |
+| 8 | Qwen3 Coder Next | 0.121 | 0.000 | 3 | 3 | 2 |
 
 ## Contributing
 

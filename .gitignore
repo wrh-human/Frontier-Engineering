@@ -16,6 +16,7 @@ benchmarks/Astrodynamics/MannedLunarLanding/results.txt
 benchmarks/Astrodynamics/MannedLunarLanding/outputlog.txt
 .vscode
 *.csv
+!leaderboard/*.csv
 *.h5ad
 *.h5ad.tmp
 *.h5ad.tmp.*
@@ -46,6 +47,7 @@ outputlog.txt
 frontier_eval/conf/batch/*
 !frontier_eval/conf/batch/example_matrix.yaml
 !frontier_eval/conf/batch/v1.yaml
+!frontier_eval/conf/batch/v1_lite.yaml
 metrics.json
 artifacts.json
 debug-*.log

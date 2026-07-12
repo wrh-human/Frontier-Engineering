@@ -8,6 +8,11 @@ Frontier-Eng 是一个面向 **generative optimization** 的 benchmark：Agent �
 
 当前版本包含 **47 个任务**，覆盖计算系统、量子信息、运筹优化、机器人控制、光学通信、物理与工程设计。主页和论文的核心观点是：真实工程问题通常从一个可行 baseline 出发，价值来自持续优化，而不是 pass/fail。
 
+## News
+
+- **2026-06-30** — **新增评测指标：金银铜 Medal Score。** 在 average rank 之外，我们发布同侪相对的 *Medal Score*（归一化到 `[0,1]`）：每道题取 v1 snapshot 中最好的前三名分数冻结为金/银/铜 baseline，模型达到金/银/铜分别得 1.00 / 0.67 / 0.33，对题集求均值；同时汇报 v1（47 题）与 v1-lite（10 题）。它只奖励"达到该题最前沿（领奖台）"，忽略长尾里可忽略的微小差距，使跨题汇总更公平。每题 podium 分数与榜单见 [`leaderboard/`](leaderboard/README.md)。
+- **2026-06-30** — **发布 `v1-lite`。** `v1` 的 10 题代表性子集，覆盖全部五大类、family 各不相同，专选"分数随预算逐步提升（而非一步做满或非高即低）"的题，配置见 `frontier_eval/conf/batch/v1_lite.yaml`。
+
 ## 这个 benchmark 在测什么
 
 和传统 agent benchmark 相比，Frontier-Eng 更关注三件事：
@@ -110,18 +115,20 @@ bash scripts/batch/validate_v1_task_envs.sh
 
 ## Leaderboard
 
-详细榜单见 [lab.einsia.ai/frontier-eng/leaderboard.html](https://lab.einsia.ai/frontier-eng/leaderboard.html)。
+详细榜单（含 average rank）见 [lab.einsia.ai/frontier-eng/leaderboard](https://lab.einsia.ai/frontier-eng/leaderboard)。发布的分数表与每题金银铜 podium 见 [`leaderboard/`](leaderboard/README.md)。
 
-| 排名 | Model | Average Rank |
-| :--: | :--- | --: |
-| 1 | Claude Opus 4.6 | 3.18 |
-| 2 | GLM-5 | 4.02 |
-| 3 | DeepSeek V3.2 | 4.41 |
-| 4 | Gemini 3.1 Pro Preview | 5.34 |
-| 5 | Grok 4.20 | 5.60 |
-| 6 | SEED 2.0 Pro | 5.63 |
-| 7 | GPT-5.4 | 5.68 |
-| 8 | Qwen3 Coder Next | 6.68 |
+**Medal Score**（金银铜 podium，越高越好，归一化到 `[0,1]`，即每题领奖台得分的均值）。每题取 **v1 snapshot (2026-04-14)** 的前三名分数冻结为金/银/铜 baseline，模型达到金/银/铜分别得 1.00 / 0.67 / 0.33。同时汇报 **v1**（47 题）与 **v1-lite**（10 题）两个集合；金银铜次数为 v1（`gpt-5.4` 采用其 47 题全量重测结果）：
+
+| 排名 | Model | Medal (v1) | Medal (v1-lite) | 🥇 | 🥈 | 🥉 |
+| :--: | :--- | --: | --: | --: | --: | --: |
+| 1 | GPT-5.4 | 0.596 | 0.667 | 24 | 5 | 2 |
+| 2 | Claude Opus 4.6 | 0.490 | 0.501 | 9 | 18 | 6 |
+| 3 | GLM-5 | 0.312 | 0.233 | 4 | 10 | 12 |
+| 4 | DeepSeek V3.2 | 0.248 | 0.166 | 3 | 9 | 8 |
+| 5 | Gemini 3.1 Pro Preview | 0.213 | 0.200 | 3 | 6 | 9 |
+| 6 | Seed 2.0 Pro | 0.185 | 0.100 | 3 | 7 | 3 |
+| 7 | Grok 4.20 | 0.184 | 0.133 | 3 | 6 | 5 |
+| 8 | Qwen3 Coder Next | 0.121 | 0.000 | 3 | 3 | 2 |
 
 ## 贡献
 
