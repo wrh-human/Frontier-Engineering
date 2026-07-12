@@ -1,0 +1,10 @@
+README.md
+README_zh-CN.md
+Task.md
+Task_zh-CN.md
+scripts/init.py
+verification/evaluator.py
+baseline/heuristic.py
+data/raw_task.json
+data/tpch_sf1/queries/
+references/constants.json

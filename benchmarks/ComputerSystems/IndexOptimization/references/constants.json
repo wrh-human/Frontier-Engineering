@@ -1,0 +1,23 @@
+{
+  "scoring": {
+    "storage_penalty_weight": 0.3,
+    "count_penalty_weight": 0.1,
+    "numeric_tolerance": 1e-6,
+    "parameter_notes": {
+      "storage_penalty_weight": "At 50% storage ratio (max allowed), penalizes score by 0.3. Chosen so that moderate storage use is acceptable but excessive indexing is discouraged.",
+      "count_penalty_weight": "At max 10 indexes, penalizes score by 0.1. Lower than storage_penalty to prioritize storage cost over index count.",
+      "numeric_tolerance": "Standard floating-point tolerance for result correctness comparison."
+    }
+  },
+  "measurement": {
+    "query_repeats": 3,
+    "warmup_rounds": 2,
+    "statement_timeout_s": 60,
+    "single_threaded": true,
+    "parameter_notes": {
+      "query_repeats": "Median of 3 runs reduces timing noise without excessive wall-clock cost.",
+      "warmup_rounds": "2 warmup rounds stabilize buffer pool and query planning before measurement.",
+      "single_threaded": "SET max_parallel_workers_per_gather = 0 ensures reproducible single-threaded timing."
+    }
+  }
+}
