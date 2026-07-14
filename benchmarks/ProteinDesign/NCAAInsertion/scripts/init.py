@@ -94,6 +94,7 @@ def design_sequence(
     """
     extra_res = f"-extra_res_fa {trf_params_path}" if trf_params_path else ""
     pyrosetta.init(silent=True, extra_options=extra_res)
+    pyrosetta.rosetta.basic.random.init_random_generators(42, "mt19937")
 
     pose = pyrosetta.pose_from_file(str(prepared_pdb))
     scorefxn = pyrosetta.get_fa_scorefxn()

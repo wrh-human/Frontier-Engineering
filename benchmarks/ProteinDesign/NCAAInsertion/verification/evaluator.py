@@ -32,12 +32,13 @@ _PYROSETTA_INITIALIZED = False
 
 
 def _ensure_pyrosetta_init(trf_params_path: str | None = None) -> None:
-    """Initialize PyRosetta once. Subsequent calls are no-ops."""
+    """Initialize PyRosetta once with fixed seed. Subsequent calls are no-ops."""
     global _PYROSETTA_INITIALIZED
     if not _PYROSETTA_INITIALIZED:
         import pyrosetta
         extra = f"-extra_res_fa {trf_params_path}" if trf_params_path else ""
         pyrosetta.init(silent=True, extra_options=extra)
+        pyrosetta.rosetta.basic.random.init_random_generators(42, "mt19937")
         _PYROSETTA_INITIALIZED = True
 
 
@@ -55,6 +56,68 @@ def dump_json(path: str | Path, payload: dict[str, Any]) -> None:
 
 def _resolve_trf_params(task_dir: Path) -> str:
     return str((task_dir / "references" / "params" / "TRF.params").resolve())
+
+
+# ---------------------------------------------------------------------------
+# Utility: hash file for tamper detection
+# ---------------------------------------------------------------------------
+
+def _hash_file(path: str | Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Constraint verification
+# ---------------------------------------------------------------------------
+
+_REFERENCE_AA = {
+    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY",
+    "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO",
+    "SER", "THR", "TRP", "TYR", "VAL",
+}
+
+
+def _verify_constraints(
+    native_pose, candidate_pose,
+    design_positions: list[int],
+    trf_position: int | None = None,
+) -> tuple[bool, str]:
+    """Verify candidate satisfies fixed-backbone and design-position constraints."""
+    if native_pose.total_residue() != candidate_pose.total_residue():
+        return False, f"residue count mismatch"
+
+    design_set = set(design_positions)
+    backbone = {"N", "CA", "C", "O"}
+
+    for i in range(1, native_pose.total_residue() + 1):
+        nat = native_pose.residue(i)
+        cand = candidate_pose.residue(i)
+
+        if i in design_set:
+            aa = cand.name3()
+            if aa not in _REFERENCE_AA and aa != "TRF":
+                return False, f"non-standard amino acid at design position {i}: {aa}"
+        else:
+            if nat.name3() != cand.name3():
+                return False, f"unexpected mutation at non-design position {i}: {nat.name3()} -> {cand.name3()}"
+            for atm in backbone:
+                if nat.has(atm) and cand.has(atm):
+                    d = nat.xyz(atm).distance(cand.xyz(atm))
+                    if d > 0.01:
+                        return False, f"backbone atom {atm} moved at position {i}: {d:.6f} Å"
+
+    # TRF position check
+    if trf_position and 1 <= trf_position <= native_pose.total_residue():
+        cand = candidate_pose.residue(trf_position)
+        if cand.name3() not in ("TRF",) and "TRF" not in cand.name():
+            return False, f"TRF missing at position {trf_position}: found {cand.name3()}"
+
+    return True, ""
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +178,7 @@ def evaluate_candidate(
     candidate_pdb: str | Path,
     trf_position: int,
     trf_params_path: str,
+    design_positions: list[int] | None = None,
 ) -> dict[str, Any]:
     """Score a designed PDB containing TRF. Checks TRF presence and energy."""
     import pyrosetta
@@ -123,10 +187,22 @@ def evaluate_candidate(
     scorefxn = pyrosetta.get_fa_scorefxn()
 
     native_pose = pyrosetta.pose_from_file(str(native_pdb))
-    native_energy = scorefxn(native_pose)
-
     candidate_pose = pyrosetta.pose_from_file(str(candidate_pdb))
+
+    # Constraint verification before scoring
+    if design_positions is not None:
+        valid, msg = _verify_constraints(native_pose, candidate_pose, design_positions, trf_position)
+        if not valid:
+            return {
+                "valid": False,
+                "combined_score": INVALID_COMBINED_SCORE,
+                "native_energy": round(scorefxn(native_pose), 6),
+                "total_energy": 0.0,
+                "error_message": msg,
+            }
+
     candidate_energy = scorefxn(candidate_pose)
+    native_energy = scorefxn(native_pose)
 
     # Validate TRF
     trf_ok = False
@@ -248,6 +324,9 @@ def run_candidate_and_evaluate(script_path: str | Path) -> int:
         )
         print(f"[evaluator]   Baseline energy: {meta['baseline_energy']:.4f}")
 
+        # Record reference hash before candidate runs
+        ref_hash_before = _hash_file(prepared_pdb)
+
         # Step 2: Run candidate
         print(f"[evaluator] Running candidate for {pid}...")
         try:
@@ -272,13 +351,22 @@ def run_candidate_and_evaluate(script_path: str | Path) -> int:
             print(f"[evaluator] ERROR: candidate script not found: {script_path}")
             return 1
 
-        # Step 3: Evaluate
+        # Verify reference was not modified by candidate
+        if _hash_file(prepared_pdb) != ref_hash_before:
+            err_metrics = {"valid": False, "combined_score": INVALID_COMBINED_SCORE, "error": "reference modified"}
+            all_metrics.append(err_metrics)
+            total_success = False
+            print(f"[evaluator]   ERROR: reference file was modified")
+            continue
+
+        # Step 3: Evaluate with constraint verification
         print(f"[evaluator] Evaluating {pid}...")
         metrics = evaluate_candidate(
             native_pdb=prepared_pdb,
             candidate_pdb=solution_pdb,
             trf_position=trf_pos,
             trf_params_path=trf_params_path,
+            design_positions=design_pos,
         )
         metrics["returncode"] = result.returncode
         if result.returncode != 0:
@@ -286,7 +374,8 @@ def run_candidate_and_evaluate(script_path: str | Path) -> int:
             metrics["combined_score"] = INVALID_COMBINED_SCORE
             total_success = False
 
-        print(f"[evaluator]   TRF: {'✅' if metrics['trf_present'] else '❌'}")
+        trf_check = metrics.get('trf_present', False)
+        print(f"[evaluator]   TRF: {'✅' if trf_check else '❌'}")
         print(f"[evaluator]   Energy: {metrics['total_energy']:.4f}  "
               f"(native: {metrics['native_energy']:.4f})")
 
