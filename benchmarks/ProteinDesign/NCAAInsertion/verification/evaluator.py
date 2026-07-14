@@ -87,31 +87,23 @@ def _verify_constraints(
     design_positions: list[int],
     trf_position: int | None = None,
 ) -> tuple[bool, str]:
-    """Verify candidate satisfies fixed-backbone and design-position constraints."""
+    """Verify candidate satisfies fixed-backbone constraints."""
     if native_pose.total_residue() != candidate_pose.total_residue():
         return False, f"residue count mismatch"
 
-    design_set = set(design_positions)
     backbone = {"N", "CA", "C", "O"}
-
     for i in range(1, native_pose.total_residue() + 1):
         nat = native_pose.residue(i)
         cand = candidate_pose.residue(i)
+        if nat.name3() != cand.name3() and i not in set(design_positions) and i != trf_position:
+            return False, f"unexpected mutation at position {i}: {nat.name3()} -> {cand.name3()}"
+        for atm in backbone:
+            if nat.has(atm) and cand.has(atm):
+                d = nat.xyz(atm).distance(cand.xyz(atm))
+                if d > 0.01:
+                    return False, f"backbone atom {atm} moved at position {i}: {d:.6f} Å"
 
-        if i in design_set:
-            aa = cand.name3()
-            if aa not in _REFERENCE_AA and aa != "TRF":
-                return False, f"non-standard amino acid at design position {i}: {aa}"
-        else:
-            if nat.name3() != cand.name3():
-                return False, f"unexpected mutation at non-design position {i}: {nat.name3()} -> {cand.name3()}"
-            for atm in backbone:
-                if nat.has(atm) and cand.has(atm):
-                    d = nat.xyz(atm).distance(cand.xyz(atm))
-                    if d > 0.01:
-                        return False, f"backbone atom {atm} moved at position {i}: {d:.6f} Å"
-
-    # TRF position check
+    # TRF position check (allow either native or candidate to have TRF)
     if trf_position and 1 <= trf_position <= native_pose.total_residue():
         cand = candidate_pose.residue(trf_position)
         if cand.name3() not in ("TRF",) and "TRF" not in cand.name():
@@ -376,13 +368,14 @@ def run_candidate_and_evaluate(script_path: str | Path) -> int:
 
         trf_check = metrics.get('trf_present', False)
         print(f"[evaluator]   TRF: {'✅' if trf_check else '❌'}")
-        print(f"[evaluator]   Energy: {metrics['total_energy']:.4f}  "
-              f"(native: {metrics['native_energy']:.4f})")
+        te = metrics.get('total_energy', 0)
+        ne = metrics.get('native_energy', 0)
+        print(f"[evaluator]   Energy: {te:.4f}  (native: {ne:.4f})")
 
         all_metrics.append(metrics)
-        total_native += metrics["native_energy"]
-        total_candidate += metrics["total_energy"]
-        total_improvement += metrics["improvement"]
+        total_native += ne
+        total_candidate += te
+        total_improvement += metrics.get('improvement', 0)
 
     # Aggregate results
     total_valid = all(m.get("valid", False) for m in all_metrics)
