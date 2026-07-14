@@ -82,6 +82,7 @@ def design_sequence(
     - Custom rotamer sampling with extra rotamers
     """
     pyrosetta.init(silent=True)
+    pyrosetta.rosetta.basic.random.init_random_generators(42, "mt19937")
 
     # Load the prepared PDB
     pose = pyrosetta.pose_from_file(str(prepared_pdb))
@@ -102,10 +103,10 @@ def design_sequence(
             # Do not change non-design positions
             task.nonconst_residue_task(i).prevent_repacking()
 
-    # Run Packer
+    # Run Packer with the configured task (not the factory)
     packer = PackRotamersMover()
     packer.score_function(scorefxn)
-    packer.task_factory(tf)
+    packer.task(task)
     packer.apply(pose)
 
     # Score the designed pose

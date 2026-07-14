@@ -7,7 +7,7 @@
     "fa_elec": {"weight": 1.0, "description": "Coulomb electrostatic potential"},
     "hbond_bb_sc": {"weight": 1.0, "description": "Backbone-sidechain hydrogen bonds"},
     "hbond_sc": {"weight": 1.0, "description": "Sidechain-sidechain hydrogen bonds"},
-    "p_aa_pp": {"weight": 1.0, "description": "Ramachandran torsion preference"},
+    "p_aa_pp": {"weight": 0.6, "description": "Ramachandran torsion preference"},
     "ref": {"weight": 1.0, "description": "Per-residue reference energy"}
   }
 }
