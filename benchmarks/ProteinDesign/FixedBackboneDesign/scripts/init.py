@@ -47,12 +47,10 @@ def load_design_positions(prepared_pdb: str | Path) -> list[int]:
     if meta_path.exists():
         meta = load_json(meta_path)
         return list(meta.get("design_positions", []))
-    # Fallback: design all positions (safety net — real data should have meta)
-    print("[init] WARNING: no meta file found, designing all positions", file=sys.stderr)
-    import pyrosetta
-    pyrosetta.init(silent=True)
-    pose = pyrosetta.pose_from_file(str(prepared_pdb))
-    return list(range(1, pose.total_residue() + 1))
+    raise FileNotFoundError(
+        f"Meta file not found at {p.with_suffix('.pdb.meta.json')} or {p.with_suffix('.meta.json')}. "
+        f"Ensure evaluator.prepare() was called first."
+    )
 
 
 # EVOLVE-BLOCK-START
