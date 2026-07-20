@@ -10,7 +10,7 @@ This domain task is based on "Protein Design with Agent Rosetta: A Case Study fo
 
 | Task | Description |
 |------|-------------|
-| [FixedBackboneDesign](FixedBackboneDesign/Task.md) | Fixed-backbone protein sequence design with canonical amino acids |
+| [FixedBackboneDesign](FixedBackboneDesign/Task.md) | Fixed-backbone protein sequence design optimization |
 | [NCAAInsertion](NCAAInsertion/Task.md) | Non-canonical amino acid (TRF) insertion design |
 
 ## Environment Setup
